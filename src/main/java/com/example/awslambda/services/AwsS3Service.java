@@ -9,15 +9,15 @@ import com.amazonaws.services.s3.model.*;
 import com.example.awslambda.configs.AwsCredentials;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -79,9 +79,19 @@ public class AwsS3Service {
             ListObjectsV2Result listObjectsResult;
             do {
                 listObjectsResult = s3Client.listObjectsV2(listObjectsRequest);
-
-                for (S3ObjectSummary objectSummary : listObjectsResult.getObjectSummaries()) {
+                List<S3ObjectSummary> objectSummaries = listObjectsResult.getObjectSummaries();
+                if (objectSummaries.isEmpty())
+                    throw new RuntimeException("S3 Objects not found = " + objectSummaries + "\nbucketName = " + bucketName + "\nfolderKey = " + folderKey);
+                int counter = 0;
+                int totalObjects = objectSummaries.size();
+                for (S3ObjectSummary objectSummary : objectSummaries) {
+                    counter++;
                     String objectKey = objectSummary.getKey();
+                    double sizeInMB = (double) objectSummary.getSize() / (1024 * 1024);
+                    int lastIndex = objectKey.lastIndexOf("/");
+                    String fileName = objectKey.substring(lastIndex + 1);
+                    System.out.printf("Object: %d/%d | Name: %s | Size: -> %.1f MB%n", counter, totalObjects, fileName, sizeInMB);
+
                     if (!objectKey.endsWith("/")) {
                         S3Object object = s3Client.getObject(new GetObjectRequest(bucketName, objectKey));
 
@@ -95,7 +105,6 @@ public class AwsS3Service {
                         try (InputStream objectContent = object.getObjectContent()) {
                             Files.copy(objectContent, localFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         }
-
                     } else {
                         String relativeFolderPath = objectKey.substring(folderKey.length());
                         String localFolderPath = localDirectoryPath + File.separator + relativeFolderPath;
