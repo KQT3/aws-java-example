@@ -89,17 +89,20 @@ public class AwsS3Service {
                         String localFilePath = localDirectoryPath + File.separator + relativeFilePath;
 
                         File localFile = new File(localFilePath);
-                        localFile.getParentFile().mkdirs();
+                        boolean mkdirs = localFile.getParentFile().mkdirs();
+                        if (mkdirs) System.out.println("Directory created: " + localFile.getParentFile().getName());
 
                         try (InputStream objectContent = object.getObjectContent()) {
                             Files.copy(objectContent, localFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         }
+
                     } else {
                         String relativeFolderPath = objectKey.substring(folderKey.length());
                         String localFolderPath = localDirectoryPath + File.separator + relativeFolderPath;
 
                         File localFolder = new File(localFolderPath);
-                        localFolder.mkdirs();
+                        boolean mkdirs = localFolder.mkdirs();
+                        if (mkdirs) System.out.println("Directory created: " + localFolder.getParentFile().getName());
                     }
                 }
 
